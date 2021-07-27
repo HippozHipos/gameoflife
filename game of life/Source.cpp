@@ -23,6 +23,7 @@ private:
 	bool editing = true;
 	bool* cells;
 	bool* cellClickedPreviousFrame;
+	olc::vi2d previousMousePosition;
 
 	//all the cells need to be updated at once.
 	//to to this a copy of cells will be made 
@@ -78,6 +79,7 @@ public:
 		cellClickedPreviousFrame = new bool[(size_t)mapSize.x * mapSize.y];
 
 		ResetCells();
+		previousMousePosition = GetMousePos();
 
 		return true;
 	}
@@ -88,11 +90,6 @@ public:
 		if (editing)
 		{
 			olc::vi2d cell = mouse / cellSize;
-			auto toggleCellState = [&]()
-			{
-				cells[cell.y * mapSize.x + cell.x] = !cells[cell.y * mapSize.x + cell.x];
-				cellsCopy[cell.y * mapSize.x + cell.x] = !cellsCopy[cell.y * mapSize.x + cell.x];
-			};
 
 			if (GetMouse(0).bHeld)
 			{
@@ -102,7 +99,8 @@ public:
 					if (!cellClickedPreviousFrame[cell.y * mapSize.x + cell.x])
 					{
 						cellClickedPreviousFrame[cell.y * mapSize.x + cell.x] = true;
-						toggleCellState();
+						cells[cell.y * mapSize.x + cell.x] = !cells[cell.y * mapSize.x + cell.x];
+						cellsCopy[cell.y * mapSize.x + cell.x] = !cellsCopy[cell.y * mapSize.x + cell.x];
 					}
 					if (GetMouse(0).bReleased)
 					{
@@ -114,12 +112,28 @@ public:
 		else
 		{
 			using namespace std::chrono_literals;
-			std::this_thread::sleep_for(100ms);
+		    std::this_thread::sleep_for(100ms);
 
 			for (int x = 1; x < mapSize.x - 1; x++)
 				for (int y = 1; y < mapSize.y - 1; y++)
 				{
-					const int totalAliveNeighbours = GetTotalAliveNeighbours(x, y);
+					const int totalAliveNeighbours = [&]()
+					{
+						auto offset = [&](int ox, int oy)
+						{
+							return (y + oy) * mapSize.x + (x + ox);
+						};
+
+						return cellsCopy[offset(-1, 0)]  +  //left
+							   cellsCopy[offset(1, 0)]   +  // right
+							   cellsCopy[offset(0, 1)]   +  //bottom
+							   cellsCopy[offset(0, -1)]  +  //top
+							   cellsCopy[offset(1, 1)]   +  //bottom-right
+							   cellsCopy[offset(1, -1)]  +  //top-right
+							   cellsCopy[offset(-1, -1)] +  //top-left
+							   cellsCopy[offset(-1, 1)];    //bottom-lef;
+					}();
+
 					if (cellsCopy[y * mapSize.x + x])
 					{
 						if (totalAliveNeighbours < 2 || totalAliveNeighbours > 3)
@@ -168,6 +182,7 @@ public:
 			}
 
 		DrawString(10, 10, editing ? "Editing" : "Playing");
+		
 
 		return true;
 	}
