@@ -24,6 +24,7 @@ private:
 	bool* cells;
 	bool* cellClickedPreviousFrame;
 	olc::vi2d previousMousePosition;
+	bool previousMouseState;
 
 	//all the cells need to be updated at once.
 	//to to this a copy of cells will be made 
@@ -80,6 +81,7 @@ public:
 
 		ResetCells();
 		previousMousePosition = GetMousePos();
+		previousMouseState = false;
 
 		return true;
 	}
@@ -99,8 +101,8 @@ public:
 					if (!cellClickedPreviousFrame[cell.y * mapSize.x + cell.x])
 					{
 						cellClickedPreviousFrame[cell.y * mapSize.x + cell.x] = true;
-						cells[cell.y * mapSize.x + cell.x] = !cells[cell.y * mapSize.x + cell.x];
-						cellsCopy[cell.y * mapSize.x + cell.x] = !cellsCopy[cell.y * mapSize.x + cell.x];
+						cells[cell.y * mapSize.x + cell.x] = true;
+						cellsCopy[cell.y * mapSize.x + cell.x] = true;
 					}
 					if (GetMouse(0).bReleased)
 					{
@@ -108,6 +110,27 @@ public:
 					}
 				}
 			}
+
+			//fill in the blanks...
+			if (previousMouseState)
+			{
+				olc::vf2d toMouse = mouse - previousMousePosition;
+				olc::vf2d normDir = toMouse.norm();
+				int mag = (int)toMouse.mag();
+				if (mag != 0)
+				{
+					for (int i = 0; i < mag; i++)
+					{
+						olc::vi2d current = previousMousePosition + normDir * i;
+						size_t index = (size_t)(current.y / cellSize) * mapSize.x + (current.x / cellSize);
+						cellClickedPreviousFrame[index] = true;
+						cells[index] = true;
+						cellsCopy[index] = true;
+					}
+				}
+			}
+			previousMousePosition = mouse;
+			previousMouseState = GetMouse(0).bHeld;
 		}
 		else
 		{
